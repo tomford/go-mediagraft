@@ -5,6 +5,8 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -61,6 +63,15 @@ func HTTPClient(h *http.Client) option {
 	}
 }
 
+type Credentials struct {
+	ClientID     string
+	ClientSecret string
+	ApiKey       string
+	CheckEnabled bool
+	Username     string
+	Password     string
+}
+
 // Do is the http.Do implementation that hides oauth
 func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
 	return nil, nil
@@ -106,7 +117,32 @@ type clientReq struct {
 	Req   *http.Request
 }
 
-func hashClientReq() {
+// Return the client and port we should use for the oauth hash
+// this is the host and port as the endpoint would naturally see,
+// vs the target IP and Port the client targets
+func requestedHostPort(r clientReq) (reqHost string, reqPort string) {
+	reqParts := strings.Split(r.Req.Host, ":")
+
+	if len(reqParts) > 0 {
+		reqHost = reqParts[0]
+	}
+
+	if len(reqParts) == 2 {
+		reqPort = reqParts[1]
+	}
+
+	/*
+		if reqHost == "" {
+			r.Req.URL.Host
+		}
+	*/
+
+	return reqHost, reqPort
+}
+
+func hashClientReq(r clientReq) {
+	timeStr := strconv.FormatInt(r.Time.Unix(), 10)
+	hostStr, hostPort := requestedHostPort(r)
 }
 
 // oauthJSONResp maps to the json data returned from the
