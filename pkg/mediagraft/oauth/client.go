@@ -5,8 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strconv"
-	"strings"
 	"time"
 )
 
@@ -115,34 +113,6 @@ type clientReq struct {
 	Time  time.Time
 	Nonce string
 	Req   *http.Request
-}
-
-// Return the client and port we should use for the oauth hash
-// this is the host and port as the endpoint would naturally see,
-// vs the target IP and Port the client targets
-func requestedHostPort(r clientReq) (reqHost string, reqPort string) {
-	reqParts := strings.Split(r.Req.Host, ":")
-
-	if len(reqParts) > 0 {
-		reqHost = reqParts[0]
-	}
-
-	if len(reqParts) == 2 {
-		reqPort = reqParts[1]
-	}
-
-	/*
-		if reqHost == "" {
-			r.Req.URL.Host
-		}
-	*/
-
-	return reqHost, reqPort
-}
-
-func hashClientReq(r clientReq) {
-	timeStr := strconv.FormatInt(r.Time.Unix(), 10)
-	hostStr, hostPort := requestedHostPort(r)
 }
 
 // oauthJSONResp maps to the json data returned from the

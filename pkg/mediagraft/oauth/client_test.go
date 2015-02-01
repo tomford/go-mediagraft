@@ -55,4 +55,5 @@ var testReq = struct {
 }
 
 func TestGet(t *testing.T) {
+	hashClientReq(testReq)
 }
