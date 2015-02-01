@@ -77,11 +77,16 @@ func hashClientReq(r clientReq) {
 
 	w.Flush()
 
-	mac := hmac.New(sha1.New, []byte(r.Token))
-	io.Copy(mac, w)
+	log.Print(b.String())
+
+	key, _ := base64.StdEncoding.DecodeString(r.Secret)
+	//log.Println(key)
+
+	mac := hmac.New(sha1.New, key)
+	io.Copy(mac, &b)
 
 	str := base64.StdEncoding.EncodeToString(mac.Sum(nil))
+	//str := base64.URLEncoding.EncodeToString(mac.Sum(nil))
 
-	log.Println(b.String())
 	log.Println(str)
 }

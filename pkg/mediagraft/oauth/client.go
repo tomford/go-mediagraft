@@ -109,10 +109,11 @@ func PostForm(url string, data url.Values) (resp *http.Response, err error) {
 }
 
 type clientReq struct {
-	Token string
-	Time  time.Time
-	Nonce string
-	Req   *http.Request
+	Token  string
+	Secret string
+	Time   time.Time
+	Nonce  string
+	Req    *http.Request
 }
 
 // oauthJSONResp maps to the json data returned from the
