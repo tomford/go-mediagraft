@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sync"
 )
 
 // Package oauth implements OAuth 2.0 draft 15 specification, as used
@@ -13,13 +14,15 @@ import (
 // Client implements an oauth client that transparently handles
 // token acquisition refresh
 type Client struct {
-	verbosity  int
-	httpClient *http.Client
+	verbosity   int
+	httpClient  *http.Client
+	credentials *credentialMap
 }
 
 var DefaultClient = &Client{
-	httpClient: http.DefaultClient,
-	verbosity:  0,
+	httpClient:  http.DefaultClient,
+	verbosity:   0,
+	credentials: &credentialMap{},
 }
 
 var (
@@ -51,6 +54,10 @@ func Verbosity(v int) option {
 	}
 }
 
+func (c *Client) Verbosity() int {
+	return c.verbosity
+}
+
 // HTTPClient sets the underlying http.Clinet we'll be using
 func HTTPClient(h *http.Client) option {
 	return func(c *Client) option {
@@ -60,7 +67,15 @@ func HTTPClient(h *http.Client) option {
 	}
 }
 
+func (c *Client) HTTPClient() *http.Client {
+	return c.httpClient
+}
+
+// Credentials is the full set of oauth credentials required to
+// log into an oauth service
 type Credentials struct {
+	TokenPath    string
+	AuthPath     string
 	ClientID     string
 	ClientSecret string
 	ApiKey       string
@@ -69,16 +84,45 @@ type Credentials struct {
 	Password     string
 }
 
+func DefaultCredential() Credentials {
+	return Credentials{
+		TokenPath:    "/oauth/2/token",
+		AuthPath:     "/oauth/2/authorize",
+		ApiKey:       "test",
+		CheckEnabled: false,
+	}
+}
+
+// CredentialMap maps oauth credentials to the domain they are used within
+type credentialMap struct {
+	credsLock *sync.RWMutex
+	creds     map[string]*Credentials
+}
+
+func (c *Client) AddCredentials(domain string, creds Credentials) {
+	c.credentials.credsLock.Lock()
+	defer c.credentials.credsLock.Unlock()
+	c.credentials.creds[domain] = &creds
+}
+
+func (c *Client) getCredentials(domain string) (creds *Credentials, ok bool) {
+	c.credentials.credsLock.RLock()
+	defer c.credentials.credsLock.RUnlock()
+	creds, ok = c.credentials.creds[domain]
+	return creds, ok
+}
+
 // Do is the http.Do implementation that hides oauth
 func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
 	return nil, nil
 }
 
-// Do is the http.Get implementation that hides oauth
+// Get is the http.Get implementation that hides oauth
 func (c *Client) Get(url string) (resp *http.Response, err error) {
 	return nil, nil
 }
 
+// Get uses the DefaultClient to perform a GET request
 func Get(url string) (resp *http.Response, err error) {
 	return DefaultClient.Get(url)
 }
