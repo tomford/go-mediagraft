@@ -99,13 +99,13 @@ type credentialMap struct {
 	creds     map[string]*Credentials
 }
 
-func (c *Client) AddCredentials(domain string, creds Credentials) {
+func (c *Client) AddDomain(domain string, creds Credentials) {
 	c.credentials.credsLock.Lock()
 	defer c.credentials.credsLock.Unlock()
 	c.credentials.creds[domain] = &creds
 }
 
-func (c *Client) getCredentials(domain string) (creds *Credentials, ok bool) {
+func (c *Client) getDomains(domain string) (creds *Credentials, ok bool) {
 	c.credentials.credsLock.RLock()
 	defer c.credentials.credsLock.RUnlock()
 	creds, ok = c.credentials.creds[domain]
