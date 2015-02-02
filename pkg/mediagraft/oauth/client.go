@@ -3,6 +3,7 @@ package oauth
 import (
 	"errors"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"sync"
@@ -84,7 +85,7 @@ type Credentials struct {
 	Password     string
 }
 
-func DefaultCredential() Credentials {
+func DefaultCredentials() Credentials {
 	return Credentials{
 		TokenPath:    "/oauth/2/token",
 		AuthPath:     "/oauth/2/authorize",
@@ -114,6 +115,17 @@ func (c *Client) getDomains(domain string) (creds *Credentials, ok bool) {
 
 // Do is the http.Do implementation that hides oauth
 func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
+	h, _ := requestedHostPort(req)
+	creds, ok := c.getDomains(h)
+
+	if !ok {
+		// We have no oauth creds for this domain, pass it directly
+		// to the http.Client
+		return c.httpClient.Do(req)
+	}
+
+	log.Println(creds)
+
 	return nil, nil
 }
 
