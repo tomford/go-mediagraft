@@ -8,16 +8,28 @@ import (
 	"encoding/base64"
 	"fmt"
 	"io"
-	"log"
 	"sort"
 	"strconv"
 	"strings"
 )
 
+// Authorization generates the oauth Authorization header for a
+// given request e.g.
+//   Authorization: MAC token="IZAxYqW3gyxYMoXy7cAu33VH52slX6TfbxHEjajECUi6EOGH4dhN9Cy++tJ3iI\/WsqrSq04CM+S4Yu4R2QZBZQ==",timestamp="1312472895&",nonce="gfn2lfvn5asfo",signature="38kvZAJcf+Xq+W/Zs+7nG9ClZnI="
+func Authorization(r *Request) string {
+	return fmt.Sprintf(
+		"MAC token=\"%s\",timestamp=\"%d\",nonce=\"%s\",signature=\"%s\"",
+		r.Token,
+		r.Time.Unix(),
+		r.Nonce,
+		hashRequest(r),
+	)
+}
+
 // Return the client and port we should use for the oauth hash
 // this is the host and port as the endpoint would naturally see,
 // vs the target IP and Port the client targets
-func requestedHostPort(r clientReq) (h string, p string) {
+func requestedHostPort(r *Request) (h string, p string) {
 	reqParts := strings.Split(r.Req.Host, ":")
 	reqURLParts := strings.Split(r.Req.URL.Host, ":")
 	reqURLScehem := r.Req.URL.Scheme
@@ -47,8 +59,7 @@ func requestedHostPort(r clientReq) (h string, p string) {
 	return h, p
 }
 
-func hashClientReq(r clientReq) string {
-	log.Println(r)
+func hashRequest(r *Request) string {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
 
@@ -76,8 +87,6 @@ func hashClientReq(r clientReq) string {
 	}
 
 	w.Flush()
-
-	log.Print(b.String())
 
 	s := hmacSha1(&b, []byte(r.Secret))
 

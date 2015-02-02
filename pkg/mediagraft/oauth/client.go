@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"time"
 )
 
 // Package oauth implements OAuth 2.0 draft 15 specification, as used
@@ -106,14 +105,6 @@ func (c *Client) PostForm(url string, data url.Values) (resp *http.Response, err
 
 func PostForm(url string, data url.Values) (resp *http.Response, err error) {
 	return DefaultClient.PostForm(url, data)
-}
-
-type clientReq struct {
-	Token  string
-	Secret string
-	Time   time.Time
-	Nonce  string
-	Req    *http.Request
 }
 
 // oauthJSONResp maps to the json data returned from the
