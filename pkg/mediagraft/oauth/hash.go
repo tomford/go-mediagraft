@@ -47,7 +47,7 @@ func requestedHostPort(r clientReq) (h string, p string) {
 	return h, p
 }
 
-func hashClientReq(r clientReq) {
+func hashClientReq(r clientReq) string {
 	log.Println(r)
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
@@ -79,14 +79,14 @@ func hashClientReq(r clientReq) {
 
 	log.Print(b.String())
 
-	key, _ := base64.StdEncoding.DecodeString(r.Secret)
-	//log.Println(key)
+	s := hmacSha1(&b, []byte(r.Secret))
 
+	return base64.StdEncoding.EncodeToString(s)
+}
+
+func hmacSha1(r io.Reader, key []byte) []byte {
 	mac := hmac.New(sha1.New, key)
-	io.Copy(mac, &b)
+	io.Copy(mac, r)
 
-	str := base64.StdEncoding.EncodeToString(mac.Sum(nil))
-	//str := base64.URLEncoding.EncodeToString(mac.Sum(nil))
-
-	log.Println(str)
+	return mac.Sum(nil)
 }
