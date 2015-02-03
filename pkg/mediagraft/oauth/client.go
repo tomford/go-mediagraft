@@ -1,7 +1,9 @@
 package oauth
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -75,6 +77,9 @@ func (c *Client) HTTPClient() *http.Client {
 // Credentials is the full set of oauth credentials required to
 // log into an oauth service
 type Credentials struct {
+	Proto        string //http or https, defaults to https
+	Host         string //The host:port to connect to, default to the domain
+	HostName     string //If set, this is used as the host header, default to the domain
 	TokenPath    string
 	AuthPath     string
 	ClientID     string
@@ -87,6 +92,7 @@ type Credentials struct {
 
 func DefaultCredentials() Credentials {
 	return Credentials{
+		Proto:        "https",
 		TokenPath:    "/oauth/2/token",
 		AuthPath:     "/oauth/2/authorize",
 		ApiKey:       "test",
@@ -96,13 +102,16 @@ func DefaultCredentials() Credentials {
 
 // CredentialMap maps oauth credentials to the domain they are used within
 type credentialMap struct {
-	credsLock *sync.RWMutex
+	credsLock sync.RWMutex
 	creds     map[string]*Credentials
 }
 
 func (c *Client) AddDomain(domain string, creds Credentials) {
 	c.credentials.credsLock.Lock()
 	defer c.credentials.credsLock.Unlock()
+	if c.credentials.creds == nil {
+		c.credentials.creds = make(map[string]*Credentials)
+	}
 	c.credentials.creds[domain] = &creds
 }
 
@@ -124,7 +133,10 @@ func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
 		return c.httpClient.Do(req)
 	}
 
-	log.Println(creds)
+	err = c.getToken(h, creds)
+	if err != nil {
+		return nil, err
+	}
 
 	return nil, nil
 }
@@ -166,10 +178,70 @@ func PostForm(url string, data url.Values) (resp *http.Response, err error) {
 // oauthJSONResp maps to the json data returned from the
 // mediagraft oauth implementation
 type oauthJSONResp struct {
-	TokenType    string `json:token_type`
-	Algorithm    string `json:algorithm`
-	Secret       string `json:secret`
-	AccessToken  string `json:access_token`
-	ExpiresIn    string `json:expires_in`
-	RefreshToken string `rjson:efresh_token`
+	TokenType        string `json:"token_type"`
+	Algorithm        string `json:"algorithm"`
+	Secret           string `json:"secret"`
+	AccessToken      string `json:"access_token"`
+	ExpiresIn        string `json:"expires_in"`
+	RefreshToken     string `json:"efresh_token"`
+	Error            string `json:"error"`
+	ErrorDescription string `json:"error_description"`
+}
+
+func (c *Client) getToken(domain string, creds *Credentials) error {
+	h := domain
+	if creds.Host != "" {
+		h = creds.Host
+	}
+
+	hh := domain
+	if creds.HostName != "" {
+		hh = creds.HostName
+	}
+
+	urlArgs := "grant_type=password"
+	urlArgs += fmt.Sprintf("&client_id=%s", url.QueryEscape(creds.ClientID))
+	urlArgs += fmt.Sprintf("&client_secret=%s", url.QueryEscape(creds.ClientSecret))
+	urlArgs += fmt.Sprintf("&username=%s", url.QueryEscape(creds.Username))
+	urlArgs += fmt.Sprintf("&password=%s", url.QueryEscape(creds.Password))
+	url := fmt.Sprintf("%s://%s/%s?%s", creds.Proto, h, creds.TokenPath, urlArgs)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return err
+	}
+
+	req.Host = hh
+
+	resp, err := c.httpClient.Do(req)
+
+	log.Println(url, resp, err)
+
+	var oresp oauthJSONResp
+	dec := json.NewDecoder(resp.Body)
+	if err = dec.Decode(&oresp); err == io.EOF {
+	} else if err != nil {
+		return err
+	}
+
+	if err = oresp.Err(); err != nil {
+		return err
+	}
+
+	log.Println(oresp)
+
+	return nil
+}
+
+func (r *oauthJSONResp) Err() error {
+	switch r.Error {
+	case "":
+		{
+			return nil
+		}
+	default:
+		{
+			return fmt.Errorf("%s: %s", r.Error, r.ErrorDescription)
+		}
+	}
 }
