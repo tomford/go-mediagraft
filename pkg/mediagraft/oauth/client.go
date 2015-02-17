@@ -203,6 +203,10 @@ type oauthJSONResp struct {
 }
 
 func (c *Client) getToken(domain string, creds *Credentials) error {
+	return c.getNewToken(domain, creds)
+}
+
+func (c *Client) getNewToken(domain string, creds *Credentials) error {
 	h := domain
 	if creds.Host != "" {
 		h = creds.Host
