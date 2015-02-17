@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 )
 
@@ -143,7 +144,11 @@ func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
 
 // Get is the http.Get implementation that hides oauth
 func (c *Client) Get(url string) (resp *http.Response, err error) {
-	return nil, nil
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
 }
 
 // Get uses the DefaultClient to perform a GET request
@@ -152,7 +157,11 @@ func Get(url string) (resp *http.Response, err error) {
 }
 
 func (c *Client) Head(url string) (resp *http.Response, err error) {
-	return nil, nil
+	req, err := http.NewRequest("HEAD", url, nil)
+	if err != nil {
+		return nil, err
+	}
+	return c.Do(req)
 }
 
 func Head(url string) (resp *http.Response, err error) {
@@ -160,7 +169,12 @@ func Head(url string) (resp *http.Response, err error) {
 }
 
 func (c *Client) Post(url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
-	return nil, nil
+	req, err := http.NewRequest("POST", url, body)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Set("Content-Type", bodyType)
+	return c.Do(req)
 }
 
 func Post(url string, bodyType string, body io.Reader) (resp *http.Response, err error) {
@@ -168,7 +182,7 @@ func Post(url string, bodyType string, body io.Reader) (resp *http.Response, err
 }
 
 func (c *Client) PostForm(url string, data url.Values) (resp *http.Response, err error) {
-	return nil, nil
+	return c.Post(url, "application/x-www-form-urlencoded", strings.NewReader(data.Encode()))
 }
 
 func PostForm(url string, data url.Values) (resp *http.Response, err error) {
