@@ -203,6 +203,19 @@ type oauthJSONResp struct {
 }
 
 func (c *Client) getToken(domain string, creds *Credentials) error {
+	// If we have no token, get one: grant_type=passord
+	// If we have check the expiry, if < 1 min (or configurable), do a refresh
+	//
+	// if we think we have a valid token, make the call.
+	//
+	// if we get a 401 back,
+	//   if our token is still valid now return 401 to the user
+	//   if our token is invalid now, refresh the token
+	//
+	// Make the call again with the new token
+	//   if we get another 401 back, assume either our auth is failing, or we
+	//   just aren't allowed to call that endpoint
+
 	return c.getNewToken(domain, creds)
 }
 
