@@ -1,15 +1,19 @@
 package oauth
 
 import (
+	"crypto/rand"
+	"encoding/binary"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
+	"time"
 )
 
 // Package oauth implements OAuth 2.0 draft 15 specification, as used
@@ -89,6 +93,13 @@ type Credentials struct {
 	CheckEnabled bool
 	Username     string
 	Password     string
+
+	credLock     sync.RWMutex //http or https, defaults to https
+	Algorithm    string
+	Secret       string
+	ExpiresIn    time.Duration
+	AccessToken  string
+	RefreshToken string
 }
 
 func DefaultCredentials() Credentials {
@@ -124,22 +135,37 @@ func (c *Client) getDomains(domain string) (creds *Credentials, ok bool) {
 }
 
 // Do is the http.Do implementation that hides oauth
-func (c *Client) Do(req *http.Request) (resp *http.Response, err error) {
-	h, _ := requestedHostPort(req)
+func (c *Client) Do(r *http.Request) (resp *http.Response, err error) {
+	h, _ := requestedHostPort(r)
 	creds, ok := c.getDomains(h)
 
 	if !ok {
 		// We have no oauth creds for this domain, pass it directly
 		// to the http.Client
-		return c.httpClient.Do(req)
+		return c.httpClient.Do(r)
 	}
 
-	err = c.getToken(h, creds)
+	// If we have no token, get one: grant_type=passord
+	// If we have check the expiry, if < 1 min (or configurable), do a refresh
+	//
+	// if we think we have a valid token, make the call.
+	//
+	// if we get a 401 back,
+	//   if our token is still valid now return 401 to the user
+	//   if our token is invalid now, refresh the token
+	//
+	// Make the call again with the new token
+	//   if we get another 401 back, assume either our auth is failing, or we
+	//   just aren't allowed to call that endpoint
+
+	err = creds.updateCreds(h, c.httpClient)
 	if err != nil {
 		return nil, err
 	}
 
-	return nil, nil
+	r.Header.Set("Authorization", creds.Authorization(r, time.Now(), nonce()))
+
+	return c.httpClient.Do(r)
 }
 
 // Get is the http.Get implementation that hides oauth
@@ -202,40 +228,33 @@ type oauthJSONResp struct {
 	ErrorDescription string `json:"error_description"`
 }
 
-func (c *Client) getToken(domain string, creds *Credentials) error {
-	// If we have no token, get one: grant_type=passord
-	// If we have check the expiry, if < 1 min (or configurable), do a refresh
-	//
-	// if we think we have a valid token, make the call.
-	//
-	// if we get a 401 back,
-	//   if our token is still valid now return 401 to the user
-	//   if our token is invalid now, refresh the token
-	//
-	// Make the call again with the new token
-	//   if we get another 401 back, assume either our auth is failing, or we
-	//   just aren't allowed to call that endpoint
-
-	return c.getNewToken(domain, creds)
+func (c *Credentials) updateCreds(domain string, cl *http.Client) error {
+	return c.getNewToken(domain, cl)
 }
 
-func (c *Client) getNewToken(domain string, creds *Credentials) error {
+func (c *Credentials) getNewToken(domain string, cl *http.Client) error {
+	c.credLock.RUnlock()
+	defer c.credLock.RLock()
+
+	c.credLock.Lock()
+	defer c.credLock.Unlock()
+
 	h := domain
-	if creds.Host != "" {
-		h = creds.Host
+	if c.Host != "" {
+		h = c.Host
 	}
 
 	hh := domain
-	if creds.HostName != "" {
-		hh = creds.HostName
+	if c.HostName != "" {
+		hh = c.HostName
 	}
 
 	urlArgs := "grant_type=password"
-	urlArgs += fmt.Sprintf("&client_id=%s", url.QueryEscape(creds.ClientID))
-	urlArgs += fmt.Sprintf("&client_secret=%s", url.QueryEscape(creds.ClientSecret))
-	urlArgs += fmt.Sprintf("&username=%s", url.QueryEscape(creds.Username))
-	urlArgs += fmt.Sprintf("&password=%s", url.QueryEscape(creds.Password))
-	url := fmt.Sprintf("%s://%s/%s?%s", creds.Proto, h, creds.TokenPath, urlArgs)
+	urlArgs += fmt.Sprintf("&client_id=%s", url.QueryEscape(c.ClientID))
+	urlArgs += fmt.Sprintf("&client_secret=%s", url.QueryEscape(c.ClientSecret))
+	urlArgs += fmt.Sprintf("&username=%s", url.QueryEscape(c.Username))
+	urlArgs += fmt.Sprintf("&password=%s", url.QueryEscape(c.Password))
+	url := fmt.Sprintf("%s://%s/%s?%s", c.Proto, h, c.TokenPath, urlArgs)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
@@ -244,9 +263,7 @@ func (c *Client) getNewToken(domain string, creds *Credentials) error {
 
 	req.Host = hh
 
-	resp, err := c.httpClient.Do(req)
-
-	log.Println(url, resp, err)
+	resp, err := cl.Do(req)
 
 	var oresp oauthJSONResp
 	dec := json.NewDecoder(resp.Body)
@@ -258,8 +275,6 @@ func (c *Client) getNewToken(domain string, creds *Credentials) error {
 	if err = oresp.Err(); err != nil {
 		return err
 	}
-
-	log.Println(oresp)
 
 	return nil
 }
@@ -275,4 +290,17 @@ func (r *oauthJSONResp) Err() error {
 			return fmt.Errorf("%s: %s", r.Error, r.ErrorDescription)
 		}
 	}
+}
+
+var nonceCounter uint64
+
+// nonce returns a unique string, stolen from another oauth library
+func nonce() string {
+	n := atomic.AddUint64(&nonceCounter, 1)
+	if n == 1 {
+		binary.Read(rand.Reader, binary.BigEndian, &n)
+		n ^= uint64(time.Now().UnixNano())
+		atomic.CompareAndSwapUint64(&nonceCounter, 1, n)
+	}
+	return strconv.FormatUint(n, 16)
 }

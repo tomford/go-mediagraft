@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"net/http"
 	"os"
 
@@ -24,7 +23,6 @@ func main() {
 
 	r, _ := http.NewRequest("GET", "http://"+testdomain, nil)
 	resp, err := c.Do(r)
-	log.Println(resp, err)
 
 	return
 }
