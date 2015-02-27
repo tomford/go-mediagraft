@@ -245,8 +245,7 @@ func (c *Credentials) updateCreds(domain string, cl *http.Client) error {
 	switch {
 	case c.AccessToken == "":
 		oresp, err = c.getNewToken(domain, "password", cl)
-	//case time.Now().After(c.ExpiresAt):
-	case true:
+	case time.Now().After(c.ExpiresAt):
 		oresp, err = c.getNewToken(domain, "refresh_token", cl)
 	default:
 		// We have a token, and we think it is valid
