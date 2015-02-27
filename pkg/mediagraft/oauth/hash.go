@@ -48,6 +48,7 @@ func (c *Credentials) Authorization(r *http.Request, t time.Time, nonce string) 
 	}
 
 	w.Flush()
+	//log.Println("blah", string(b.Bytes()))
 
 	s := hmacSha1(&b, []byte(c.Secret))
 

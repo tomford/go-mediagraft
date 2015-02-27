@@ -5,10 +5,20 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"net/http"
-	"net/url"
 	"testing"
 	"time"
 )
+
+// Request holds the details of the
+type Request struct {
+	Token  string
+	Secret string
+	Time   time.Time
+	Nonce  string
+	Method string
+	URL    string
+	Host   string
+}
 
 var testReqs = []struct {
 	r   Request
@@ -42,15 +52,9 @@ var testReqs = []struct {
 			"5t4lGTb2",
 			time.Unix(1312471030, 0),
 			"gfn2lfvn5asfo",
-			&http.Request{
-				Method: "GET",
-				Host:   "api.we7.com",
-				URL: &url.URL{
-					Scheme: "http",
-					Host:   "127.0.0.1:80",
-					Path:   "/api/0.1/userPlaylistsInfo?apiKey=myKey&appVersion=1&detail=full&=format=xml",
-				},
-			},
+			"GET",
+			"http://127.0.0.1:80/api/0.1/userPlaylistsInfo?apiKey=myKey&appVersion=1&detail=full&format=xml",
+			"api.we7.com",
 		},
 		`MAC token="IZAxYqW3gyxYMoXy7cAu33VH52slX6TfbxHEjajECUi6EOGH4dhN9Cy++tJ3iI\/WsqrSq04CM+S4Yu4R2QZBZQ==",timestamp="1312471030",nonce="gfn2lfvn5asfo",signature="MkvSv/FUo/3HQvTCzPQg2Vm/lUY="`,
 	},
@@ -71,24 +75,25 @@ var testReqs = []struct {
 			"489dks293j39",
 			time.Unix(137131200, 0),
 			"dj83hs9s",
-			&http.Request{
-				Method: "GET",
-				Host:   "example.com",
-				URL: &url.URL{
-					Scheme: "http",
-					Host:   "127.0.0.1:80",
-					Path:   "/resource/1?a=2&b=1",
-				},
-				Header: map[string][]string{},
-			},
+			"GET",
+			"http://127.0.0.1:80/resource/1?a=2&b=1",
+			"example.com",
 		},
 		`MAC token="h480djs93hd8",timestamp="137131200",nonce="dj83hs9s",signature="YTVjyNSujYs1WsDurFnvFi4JK6o="`,
 	},
 }
 
 func TestHashClientReq(t *testing.T) {
+	c := DefaultCredentials()
+	c.TokenType = "MAC"
+
 	for i, tt := range testReqs {
-		a := Authorization(&tt.r)
+		c.AccessToken = tt.r.Token
+		c.Secret = tt.r.Secret
+		r, _ := http.NewRequest(tt.r.Method, tt.r.URL, nil)
+		r.Host = tt.r.Host
+
+		a := c.Authorization(r, tt.r.Time, tt.r.Nonce)
 		if a != tt.out {
 			t.Errorf("%d. failed: expected %s got %s\n", i, tt.out, a)
 		}
