@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"time"
@@ -36,15 +37,17 @@ func (c *Credentials) Authorization(r *http.Request, t time.Time, nonce string) 
 	fmt.Fprintf(w, "%s\n", r.URL.Path) // Body hash, not using yet
 
 	// Must output the headers in sorted order
-	var qks []string
+	var qs []string
 	for k := range r.URL.Query() {
-		qks = append(qks, k)
+		key := url.QueryEscape(k)
+		val := url.QueryEscape(r.URL.Query().Get(k))
+		qs = append(qs, key+"="+val)
 	}
-	sort.Strings(qks)
+	sort.Strings(qs)
 
 	// To perform the opertion you want
-	for _, k := range qks {
-		fmt.Fprintf(w, "%s=%s\n", k, r.URL.Query().Get(k))
+	for _, k := range qs {
+		fmt.Fprint(w, k+"\n")
 	}
 
 	w.Flush()
