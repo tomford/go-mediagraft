@@ -48,13 +48,7 @@ var testReqs = []struct {
 				URL: &url.URL{
 					Scheme: "http",
 					Host:   "127.0.0.1:80",
-					Path:   "/api/0.1/userPlaylistsInfo",
-				},
-				Header: map[string][]string{
-					"apiKey":     {"myKey"},
-					"appVersion": {"1"},
-					"detail":     {"full"},
-					"format":     {"xml"},
+					Path:   "/api/0.1/userPlaylistsInfo?apiKey=myKey&appVersion=1&detail=full&=format=xml",
 				},
 			},
 		},
@@ -83,12 +77,9 @@ var testReqs = []struct {
 				URL: &url.URL{
 					Scheme: "http",
 					Host:   "127.0.0.1:80",
-					Path:   "/resource/1",
+					Path:   "/resource/1?a=2&b=1",
 				},
-				Header: map[string][]string{
-					"a": {"2"},
-					"b": {"1"},
-				},
+				Header: map[string][]string{},
 			},
 		},
 		`MAC token="h480djs93hd8",timestamp="137131200",nonce="dj83hs9s",signature="YTVjyNSujYs1WsDurFnvFi4JK6o="`,

@@ -36,15 +36,15 @@ func (c *Credentials) Authorization(r *http.Request, t time.Time, nonce string) 
 	fmt.Fprintf(w, "%s\n", r.URL.Path) // Body hash, not using yet
 
 	// Must output the headers in sorted order
-	var hks []string
-	for k := range r.Header {
-		hks = append(hks, k)
+	var qks []string
+	for k := range r.URL.Query() {
+		qks = append(qks, k)
 	}
-	sort.Strings(hks)
+	sort.Strings(qks)
 
 	// To perform the opertion you want
-	for _, k := range hks {
-		fmt.Fprintf(w, "%s=%s\n", k, r.Header[k][0])
+	for _, k := range qks {
+		fmt.Fprintf(w, "%s=%s\n", k, r.URL.Query().Get(k))
 	}
 
 	w.Flush()
@@ -54,7 +54,8 @@ func (c *Credentials) Authorization(r *http.Request, t time.Time, nonce string) 
 	str := base64.StdEncoding.EncodeToString(s)
 
 	return fmt.Sprintf(
-		"MAC token=\"%s\",timestamp=\"%d\",nonce=\"%s\",signature=\"%s\"",
+		"%s token=\"%s\",timestamp=\"%d\",nonce=\"%s\",signature=\"%s\"",
+		c.TokenType,
 		c.AccessToken,
 		t.Unix(),
 		nonce,

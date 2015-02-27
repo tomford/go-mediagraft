@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"io"
+	"log"
 	"net/http"
 	"os"
 
@@ -21,8 +24,31 @@ func main() {
 
 	c.AddDomain(testdomain, creds)
 
-	r, _ := http.NewRequest("GET", "http://"+testdomain, nil)
+	rurl := fmt.Sprintf("http://%s/api/0.1/simpleSearch?apiKey=%s&appVersion=%s&format=json&type=artists&query=jimi",
+		testdomain,
+		creds.ApiKey,
+		"1",
+	)
+
+	log.Println("QUERY 1...")
+	r, _ := http.NewRequest("GET", rurl, nil)
 	resp, err := c.Do(r)
+	if err == nil {
+		io.Copy(os.Stdout, resp.Body)
+	}
+
+	log.Println(err)
+	log.Println(resp)
+
+	log.Println("QUERY 2...")
+	r, _ = http.NewRequest("GET", rurl, nil)
+	resp, err = c.Do(r)
+	if err == nil {
+		io.Copy(os.Stdout, resp.Body)
+	}
+
+	log.Println(err)
+	log.Println(resp)
 
 	return
 }

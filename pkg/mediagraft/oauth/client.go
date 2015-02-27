@@ -40,6 +40,7 @@ var (
 	ErrGrantTypeMismatch  = errors.New("The grant type was not set or set to an invalid value")
 	ErrUnknownClientID    = errors.New("Unknown client ID")
 	ErrBadClientSecret    = errors.New("The client secret supplied does not match the client ID")
+	ErrBadExpiresAt       = errors.New("The expires_at value was unparsable")
 )
 
 type option func(c *Client) option
@@ -93,13 +94,16 @@ type Credentials struct {
 	CheckEnabled bool
 	Username     string
 	Password     string
+	RedirectURI  string
 
-	credLock     sync.RWMutex //http or https, defaults to https
-	Algorithm    string
-	Secret       string
-	ExpiresIn    time.Duration
-	AccessToken  string
-	RefreshToken string
+	credLock          *sync.RWMutex //http or https, defaults to https
+	TokenType         string
+	Algorithm         string
+	Secret            string
+	ExpiresAt         time.Time
+	AccessToken       string
+	RefreshToken      string
+	AuthorizationCode string
 }
 
 func DefaultCredentials() Credentials {
@@ -109,6 +113,7 @@ func DefaultCredentials() Credentials {
 		AuthPath:     "/oauth/2/authorize",
 		ApiKey:       "test",
 		CheckEnabled: false,
+		credLock:     &sync.RWMutex{},
 	}
 }
 
@@ -221,24 +226,60 @@ type oauthJSONResp struct {
 	TokenType        string `json:"token_type"`
 	Algorithm        string `json:"algorithm"`
 	Secret           string `json:"secret"`
-	AccessToken      string `json:"access_token"`
 	ExpiresIn        string `json:"expires_in"`
-	RefreshToken     string `json:"efresh_token"`
 	Error            string `json:"error"`
 	ErrorDescription string `json:"error_description"`
+	Reason           string `json:"reason"`
+	// These fields are optionsal
+	AccessToken       *string `json:"access_token"`
+	RefreshToken      *string `json:"refresh_token"`
+	AuthorizationCode *string `json:"authorizationCode"`
 }
 
 func (c *Credentials) updateCreds(domain string, cl *http.Client) error {
-	return c.getNewToken(domain, cl)
-}
-
-func (c *Credentials) getNewToken(domain string, cl *http.Client) error {
-	c.credLock.RUnlock()
-	defer c.credLock.RLock()
-
 	c.credLock.Lock()
 	defer c.credLock.Unlock()
 
+	var err error
+	var oresp *oauthJSONResp
+	switch {
+	case c.AccessToken == "":
+		oresp, err = c.getNewToken(domain, "password", cl)
+	//case time.Now().After(c.ExpiresAt):
+	case true:
+		oresp, err = c.getNewToken(domain, "refresh_token", cl)
+	default:
+		// We have a token, and we think it is valid
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+
+	c.Algorithm = oresp.Algorithm
+	c.TokenType = oresp.TokenType
+	c.Secret = oresp.Secret
+	if oresp.AccessToken != nil {
+		c.AccessToken = *oresp.AccessToken
+	}
+	if oresp.RefreshToken != nil {
+		c.RefreshToken = *oresp.RefreshToken
+	}
+	if oresp.AuthorizationCode != nil {
+		c.AuthorizationCode = *oresp.AuthorizationCode
+	}
+
+	expAt, err := strconv.Atoi(oresp.ExpiresIn)
+	if err != nil {
+		return ErrBadExpiresAt
+	}
+
+	c.ExpiresAt = time.Now().Add(time.Second * time.Duration(expAt))
+
+	return nil
+}
+
+func (c *Credentials) getNewToken(domain string, grantType string, cl *http.Client) (*oauthJSONResp, error) {
 	h := domain
 	if c.Host != "" {
 		h = c.Host
@@ -249,16 +290,25 @@ func (c *Credentials) getNewToken(domain string, cl *http.Client) error {
 		hh = c.HostName
 	}
 
-	urlArgs := "grant_type=password"
+	urlArgs := "grant_type=" + grantType
 	urlArgs += fmt.Sprintf("&client_id=%s", url.QueryEscape(c.ClientID))
 	urlArgs += fmt.Sprintf("&client_secret=%s", url.QueryEscape(c.ClientSecret))
-	urlArgs += fmt.Sprintf("&username=%s", url.QueryEscape(c.Username))
-	urlArgs += fmt.Sprintf("&password=%s", url.QueryEscape(c.Password))
+	switch grantType {
+	case "password":
+		urlArgs += fmt.Sprintf("&username=%s", url.QueryEscape(c.Username))
+		urlArgs += fmt.Sprintf("&password=%s", url.QueryEscape(c.Password))
+	case "refresh_token":
+		urlArgs += fmt.Sprintf("&refresh_token=%s", url.QueryEscape(c.RefreshToken))
+	case "authorization_code":
+		urlArgs += fmt.Sprintf("&redirect_uri=%s", url.QueryEscape(c.RedirectURI))
+	default:
+		return nil, ErrGrantTypeMismatch
+	}
 	url := fmt.Sprintf("%s://%s/%s?%s", c.Proto, h, c.TokenPath, urlArgs)
 
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	req.Host = hh
@@ -269,14 +319,14 @@ func (c *Credentials) getNewToken(domain string, cl *http.Client) error {
 	dec := json.NewDecoder(resp.Body)
 	if err = dec.Decode(&oresp); err == io.EOF {
 	} else if err != nil {
-		return err
+		return nil, err
 	}
 
 	if err = oresp.Err(); err != nil {
-		return err
+		return nil, err
 	}
 
-	return nil
+	return &oresp, err
 }
 
 func (r *oauthJSONResp) Err() error {
