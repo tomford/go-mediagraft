@@ -21,7 +21,15 @@ func main() {
 	c.Host = testdomain
 	c.OAuthClient().AddDomain(testdomain, creds)
 
-	r, err := c.SimpleSearch("jimi", []string{"artists"})
+	r, err := c.SimpleSearch("jimi+hendrix", []string{"artists"})
+	log.Println(err)
+	log.Println(r)
+
+	ri, err := c.SimpleSearchWithInfo("jimi", []string{"artists"})
+	log.Println(err)
+	log.Println(ri)
+
+	r, err = c.FindMatch("Purple Haze", "Jimi Hendrix", []string{"artists"})
 	log.Println(err)
 	log.Println(r)
 

@@ -2,9 +2,13 @@ package mediagraft
 
 import (
 	"encoding/json"
+	"io"
+	"net/url"
 	"strconv"
 	"strings"
 )
+
+var spaceReplacer = strings.NewReplacer(" ", "+")
 
 type SearchResult struct {
 	Artists       []Artist
@@ -19,9 +23,20 @@ type SearchResult struct {
 }
 
 type SearchResultInfo struct {
-	SeatchResults []SearchResult
 	IsSearchFuzzy bool `json:",string"`
 	DidYouMean    string
+}
+
+type SearchResultsWithInfo struct {
+	Data struct {
+		SearchResults     SearchResult
+		SearchResultsInfo struct {
+			TotalNumberOfResults int  `json:",string"`
+			ResultsExhaused      bool `json:",string"`
+			SearchResultInfo
+		}
+	}
+	Status string
 }
 
 type searchOpt func(c *Search) searchOpt
@@ -156,19 +171,19 @@ func (s *Search) UseSpellCheck() *bool {
 	return s.useSpellCheck
 }
 
-func (s *Search) String() string {
-	args := ""
+func (s *Search) args() *url.Values {
+	a := &url.Values{}
 
 	if v := s.Order(); v != nil {
-		args += "&order=" + *v
+		a.Add("order", *v)
 	}
 
 	if v := s.OrderDirection(); v != nil {
-		args += "&orderDirection=" + *v
+		a.Add("orderDirection", *v)
 	}
 
 	if v := s.AllowExplicit(); v != nil {
-		args += "&allowExplicit=" + strconv.FormatBool(*v)
+		a.Add("allowExplicit", strconv.FormatBool(*v))
 	}
 
 	if vs := s.ArtistIDs(); len(vs) != 0 {
@@ -176,33 +191,80 @@ func (s *Search) String() string {
 		for _, v := range vs {
 			ss = append(ss, strconv.Itoa(v))
 		}
-		args += "&artistIds=" + strings.Join(ss, ",")
+		a.Add("artistIds", strings.Join(ss, ","))
 	}
 
 	if v := s.Exact(); v != nil {
-		args += "&exact=" + strconv.FormatBool(*v)
+		a.Add("exact", strconv.FormatBool(*v))
 	}
 
 	if v := s.RestrictedToStreamable(); v != nil {
-		args += "&restrictedToStreamable=" + strconv.FormatBool(*v)
+		a.Add("restrictedToStreamable", strconv.FormatBool(*v))
 	}
 
 	if v := s.UseSpellCheck(); v != nil {
-		args += "&useSpellCheck=" + strconv.FormatBool(*v)
+		a.Add("useSpellCheck", strconv.FormatBool(*v))
 	}
 
-	return args
+	return a
 }
 
 func (c *Client) SimpleSearch(q string, types []string, opts ...searchOpt) (*SearchResult, error) {
+	r, err := c.doSearch("simpleSearch", q, types, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	var sr SearchResult
+	dec := json.NewDecoder(r)
+	err = dec.Decode(&sr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sr, nil
+}
+
+func (c *Client) SimpleSearchWithInfo(q string, types []string, opts ...searchOpt) (*SearchResultsWithInfo, error) {
+	r, err := c.doSearch("simpleSearchWithInfo", q, types, opts...)
+	if err != nil {
+		return nil, err
+	}
+
+	var sr SearchResultsWithInfo
+
+	dec := json.NewDecoder(r)
+	err = dec.Decode(&sr)
+	if err != nil {
+		return nil, err
+	}
+
+	return &sr, nil
+}
+
+func (c *Client) doSearch(method string, q string, types []string, opts ...searchOpt) (io.Reader, error) {
 	s := Search{}
 	s.Option(opts...)
 
-	args := "query=" + q
-	args += "&type=" + strings.Join(types, ",")
-	args += s.String()
+	args := s.args()
+	args.Add("query", spaceReplacer.Replace(q))
+	args.Add("type", strings.Join(types, ","))
 
-	r, err := c.Call("GET", "simpleSearch", args, nil)
+	r, err := c.Call("GET", method, args, nil)
+	if err != nil {
+		return nil, err
+	}
+	return r.Body, nil
+
+}
+
+func (c *Client) FindMatch(title string, artistname string, types []string) (*SearchResult, error) {
+	args := &url.Values{}
+	args.Add("title", spaceReplacer.Replace(title))
+	args.Add("artistName", spaceReplacer.Replace(artistname))
+	args.Add("type", strings.Join(types, ","))
+
+	r, err := c.Call("GET", "findMatch", args, nil)
 	if err != nil {
 		return nil, err
 	}
@@ -215,12 +277,4 @@ func (c *Client) SimpleSearch(q string, types []string, opts ...searchOpt) (*Sea
 	}
 
 	return &sr, nil
-}
-
-func (c *Client) SimpleSearchWithInfo(q string, types []string, opts ...searchOpt) (*SearchResultInfo, error) {
-	return nil, nil
-}
-
-func (c *Client) FindMatch(title string, artistname string, types string) (*SearchResult, error) {
-	return nil, nil
 }

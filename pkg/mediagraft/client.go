@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 
 	"github.com/we7/go-mediagraft/pkg/mediagraft/oauth"
 )
@@ -78,22 +79,28 @@ func (c *Client) OAuthClient() *oauth.Client {
 	return c.oauthClient
 }
 
-func (c *Client) Call(httpmethod string, method, qs string, body io.Reader) (*http.Response, error) {
-	url := fmt.Sprintf("%s://%s/%s/%s/%s?apiKey=%s&appVersion=%s",
+func (c *Client) Call(httpmethod string, method string, vs *url.Values, body io.Reader) (*http.Response, error) {
+	u, err := url.Parse(fmt.Sprintf("%s://%s/%s/%s/%s",
 		c.Proto,
 		c.Host,
 		c.ApiBase,
 		c.ApiVersion,
 		method,
-		c.ApiKey,
-		c.AppVersion,
-	)
-
-	if qs != "" {
-		url += "&" + qs
+	))
+	if err != nil {
+		return nil, err
+	}
+	if vs == nil {
+		vs = &url.Values{}
 	}
 
-	r, err := http.NewRequest(httpmethod, url, body)
+	vs.Set("apiKey", c.ApiKey)
+	vs.Set("appVersion", c.AppVersion)
+	vs.Set("format", "json")
+
+	u.RawQuery = vs.Encode()
+
+	r, err := http.NewRequest(httpmethod, u.String(), body)
 	if err != nil {
 		return nil, err
 	}
