@@ -1,16 +1,15 @@
 package mediagraft
 
-import (
-	"net/url"
-	"time"
-)
+import "time"
 
 // ImageSize is a string representation of hte size of an image available
 // from the image store. This should be either "original", or "WxH"
 type ImageSize string
 
+type URL string
+
 // Images is a set of image URLs keyed by size
-type Images map[ImageSize]url.URL
+type Images map[ImageSize]URL
 
 type Artist struct {
 	Id          int    `json:"artistId,string"`
@@ -22,10 +21,10 @@ type Artist struct {
 	IsAlikeTitleMatch  bool `json:"isAlikeTitleMatch,string"`
 	IsAlikeArtistMatch bool `json:"isAlikeTitleMatch,string"`
 
-	Description      string  `json:"artistDescription"`
-	URL              url.URL `json:"artistUrl"`
-	IsVarious        bool    `json:",string"`
-	CommentaryArtist bool    `json:",string"`
+	Description      string `json:"artistDescription"`
+	URL              URL
+	IsVarious        bool `json:",string"`
+	CommentaryArtist bool `json:",string"`
 
 	Genres      []Genre
 	Top10Albums []Album
@@ -124,7 +123,7 @@ type Playlist struct {
 type Stream struct {
 	Id       int `json:"genreId,string"`
 	Unique   string
-	Location url.URL
+	Location URL
 	Format   string
 }
 

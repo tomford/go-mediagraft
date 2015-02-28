@@ -24,7 +24,7 @@ func main() {
 
 	c.AddDomain(testdomain, creds)
 
-	rurl := fmt.Sprintf("http://%s/api/0.1/simpleSearch?apiKey=%s&appVersion=%s&format=json&type=artists,albums,stations,tracks,genres,stations,trackversions&query=jimi",
+	rurl := fmt.Sprintf("http://%s/api/0.1/simpleSearch?apiKey=%s&appVersion=%s&format=json&type=genres&query=blues",
 		testdomain,
 		creds.ApiKey,
 		"1",

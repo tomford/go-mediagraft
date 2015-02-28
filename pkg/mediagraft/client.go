@@ -1,16 +1,42 @@
 // Package provides access to We7's mediagraft API
 package mediagraft
 
-import "github.com/we7/go-mediagraft/pkg/mediagraft/oauth"
+import (
+	"fmt"
+	"io"
+	"net/http"
+
+	"github.com/we7/go-mediagraft/pkg/mediagraft/oauth"
+)
 
 // Client implements an oauth client that transparently handles
 // token acquisition refresh
 type Client struct {
+	Proto    string //http or https, defaults to https
+	Host     string //The host:port to connect to, default to the domain
+	HostName string //
+	Port     string //
+
+	ApiBase    string
+	ApiKey     string
+	ApiVersion string
+	AppVersion string
+
 	verbosity   int
 	oauthClient *oauth.Client
 }
 
 var DefaultClient = &Client{
+	Proto:    "http",
+	Host:     "api.we7.com",
+	HostName: "",
+	Port:     "80",
+
+	ApiBase:    "/api",
+	ApiKey:     "gomg",
+	ApiVersion: "0.1",
+	AppVersion: "1",
+
 	oauthClient: oauth.DefaultClient,
 	verbosity:   0,
 }
@@ -50,4 +76,31 @@ func OAuthClient(o *oauth.Client) option {
 
 func (c *Client) OAuthClient() *oauth.Client {
 	return c.oauthClient
+}
+
+func (c *Client) Call(httpmethod string, method, qs string, body io.Reader) (*http.Response, error) {
+	url := fmt.Sprintf("%s://%s/%s/%s/%s?apiKey=%s&appVersion=%s",
+		c.Proto,
+		c.Host,
+		c.ApiBase,
+		c.ApiVersion,
+		method,
+		c.ApiKey,
+		c.AppVersion,
+	)
+
+	if qs != "" {
+		url += "&" + qs
+	}
+
+	r, err := http.NewRequest(httpmethod, url, body)
+	if err != nil {
+		return nil, err
+	}
+
+	if c.HostName != "" {
+		r.Host = c.HostName
+	}
+
+	return c.OAuthClient().Do(r)
 }
