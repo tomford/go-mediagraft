@@ -120,10 +120,11 @@ type Playlist struct {
 	User
 }
 
+type StreamUnique string
 type Stream struct {
-	Id       int `json:"genreId,string"`
-	Unique   string
-	Location URL
+	Id       int          `json:"trackId,string"`
+	Unique   StreamUnique `json:"streamUnique"`
+	Location URL          `json:"streamLocation"`
 	Format   string
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"log"
 	"os"
+	"time"
 
 	mg "github.com/we7/go-mediagraft/pkg/mediagraft"
 	"github.com/we7/go-mediagraft/pkg/mediagraft/oauth"
@@ -21,17 +22,27 @@ func main() {
 	c.Host = testdomain
 	c.OAuthClient().AddDomain(testdomain, creds)
 
-	r, err := c.SimpleSearch("jimi+hendrix", []string{"artists"})
-	log.Println(err)
-	log.Println(r)
+	r, _ := c.SimpleSearch("jimi hendrix purple haze", []string{"tracks"})
 
-	ri, err := c.SimpleSearchWithInfo("jimi", []string{"artists"})
-	log.Println(err)
-	log.Println(ri)
+	t := r.Tracks[0]
+	log.Println(t.Id)
+	log.Println(t.Images)
 
-	r, err = c.FindMatch("Purple Haze", "Jimi Hendrix", []string{"artists"})
+	s, err := c.StreamInfo(t.Id, "RADIO", 0, []string{"MP3"})
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	log.Println(s)
+	log.Println(s.Unique)
+	log.Println(s.Location)
+
+	d := (time.Second * 15)
+	time.Sleep(d)
+
+	err = c.StreamEnd(s.Unique, d, 0)
 	log.Println(err)
-	log.Println(r)
 
 	return
 }
