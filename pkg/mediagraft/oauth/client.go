@@ -33,6 +33,12 @@ var DefaultClient = &Client{
 	credentials: &credentialMap{},
 }
 
+// New creates a new instance of an oauth client
+func New() *Client {
+	c := *DefaultClient
+	return &c
+}
+
 var (
 	// OAuth specific Errors
 	ErrUnactivatedUser    = errors.New("The user account is not activated. The user must respond to the validation email, or else clients may make the token request again with checkEnabled=false to allow a short grace-period decided by the client")

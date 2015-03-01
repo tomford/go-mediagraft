@@ -42,6 +42,12 @@ var DefaultClient = &Client{
 	verbosity:   0,
 }
 
+// New returns a new oauth client with the default settings
+func New() *Client {
+	c := *DefaultClient
+	return &c
+}
+
 type option func(c *Client) option
 
 // Option sets the options specified.
