@@ -4,6 +4,7 @@ package mediagraft
 import (
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 
@@ -105,6 +106,8 @@ func (c *Client) Call(httpmethod string, method string, vs *url.Values, body io.
 	vs.Set("format", "json")
 
 	u.RawQuery = vs.Encode()
+
+	log.Println(u.String())
 
 	r, err := http.NewRequest(httpmethod, u.String(), body)
 	if err != nil {
