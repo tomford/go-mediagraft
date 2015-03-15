@@ -26,9 +26,9 @@ type Artist struct {
 	IsVarious        bool `json:"isVarious,string"`
 	CommentaryArtist bool `json:"commentaryArtist,string"`
 
-	Genres []Genre
-	Albums []Album
-	Tracks []Track
+	Genres []Genre `json:"grenres"`
+	Albums []Album `json:"albums"`
+	Tracks []Track `json:"tracks"`
 }
 
 type Track struct {
@@ -79,7 +79,8 @@ type Album struct {
 
 	Artist
 	Genres []Genre
-	Tracks []Track
+	Genres []Genre `json:"grenres"`
+	Tracks []Track `json:"tracks"`
 
 	Composer   string
 	ComposerID int `json:"composerId,string"`
@@ -116,7 +117,7 @@ type Playlist struct {
 	Version     int    `json:"playlistVersion,string"`
 
 	Images Images
-	Tracks []Track
+	Tracks []Track `json:"tracks"`
 
 	User
 }
