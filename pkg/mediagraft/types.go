@@ -78,7 +78,6 @@ type Album struct {
 	Streamable bool `json:"streamable,string"`
 
 	Artist
-	Genres []Genre
 	Genres []Genre `json:"grenres"`
 	Tracks []Track `json:"tracks"`
 
