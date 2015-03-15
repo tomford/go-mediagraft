@@ -15,6 +15,7 @@ func (c *Client) TracksInfo(trackId ...int32) ([]Track, error) {
 		strids = append(strids, strconv.Itoa(int(t)))
 	}
 	args.Set("ids", strings.Join(strids, ","))
+	args.Set("detail", "full")
 
 	r, err := c.Call("GET", "tracksInfo", args, nil)
 	if err != nil {
@@ -40,7 +41,8 @@ func (c *Client) TrackVersionsInfo(trackId ...int32) ([]Track, error) {
 		strids = append(strids, strconv.Itoa(int(t)))
 	}
 
-	args.Set("versionids", strings.Join(strids, ","))
+	args.Set("versionIds", strings.Join(strids, ","))
+	args.Set("detail", "full")
 
 	r, err := c.Call("GET", "tracksInfo", args, nil)
 	if err != nil {

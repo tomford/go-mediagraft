@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"log"
 	"os"
 
@@ -22,18 +21,18 @@ func main() {
 	c.Host = testdomain
 	c.OAuthClient().AddDomain(testdomain, creds)
 
-	r, _ := c.SimpleSearch("jimi hendrix purple haze", []string{"artists"})
+	r, _ := c.SimpleSearch("jimi hendrix purple haze", []string{"tracks"})
 
-	a := r.Artists[0]
-	log.Println(a.Id)
-	log.Println(a.Images)
-
-	sid := mg.StationIdent(fmt.Sprintf("a%v", a.Id))
-	s, err := c.GetStation(sid)
-	log.Println(err)
-	log.Println(s)
+	t := r.Tracks[0]
+	log.Println(t)
+	log.Println(t.Images)
 
 	/*
+			sid := mg.StationIdent(fmt.Sprintf("a%v", a.Id))
+			s, err := c.GetStation(sid)
+			log.Println(err)
+			log.Printf("%+v", s)
+
 		s, err := c.StreamInfo(t.Id, "RADIO", 0, []string{"MP3"})
 		if err != nil {
 			log.Println(err)
