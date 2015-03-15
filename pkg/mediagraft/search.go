@@ -23,7 +23,7 @@ type SearchResult struct {
 }
 
 type SearchResultInfo struct {
-	IsSearchFuzzy bool `json:",string"`
+	IsSearchFuzzy bool `json:"isSearchFuzze,string"`
 	DidYouMean    string
 }
 
@@ -31,8 +31,8 @@ type SearchResultsWithInfo struct {
 	Data struct {
 		SearchResults     SearchResult
 		SearchResultsInfo struct {
-			TotalNumberOfResults int  `json:",string"`
-			ResultsExhaused      bool `json:",string"`
+			TotalNumberOfResults int  `json:"totalNumberOfResults,string"`
+			ResultsExhausted     bool `json:"resultExausted,string"`
 			SearchResultInfo
 		}
 	}

@@ -16,15 +16,15 @@ type Artist struct {
 	Name        string `json:"artistName"`
 	DisplayName string `json:"artistDisplayName"`
 	Images      Images
-	Streamable  bool `json:",string"`
+	Streamable  bool `json:"streamable,string"`
 
 	IsAlikeTitleMatch  bool `json:"isAlikeTitleMatch,string"`
 	IsAlikeArtistMatch bool `json:"isAlikeTitleMatch,string"`
 
 	Description      string `json:"artistDescription"`
 	URL              URL
-	IsVarious        bool `json:",string"`
-	CommentaryArtist bool `json:",string"`
+	IsVarious        bool `json:"isVarious,string"`
+	CommentaryArtist bool `json:"commentaryArtist,string"`
 
 	Genres      []Genre
 	Top10Albums []Album
@@ -35,19 +35,19 @@ type Track struct {
 	Id         int    `json:"trackId,string"`
 	Title      string `json:"trackTitle"`
 	Images     Images
-	Streamable bool          `json:",string"`
+	Streamable bool          `json:"streamable,string"`
 	duration   int           `json:"duration,string"`
 	Duration   time.Duration `json:"-"`
 
-	Purchaseable   bool `json:",string"`
-	Radioable      bool `json:",string"`
+	Purchaseable   bool `json:"purchaseable,string"`
+	Radioable      bool `json:"radioable,string"`
 	CopyRight      string
-	OwnerId        int `json:",string"`
-	purchasPrice   string
-	TrackVersionId int  `json:",string"`
-	TrackNumber    int  `json:",string"`
-	DiscNumber     int  `json:",string"`
-	Explicit       bool `json:",string"`
+	OwnerId        int `json:"ownerId,string"`
+	PurchasPrice   string
+	TrackVersionId int  `json:"trackVersionId,string"`
+	TrackNumber    int  `json:"trackNumber,string"`
+	DiscNumber     int  `json:"discNumber,string"`
+	Explicit       bool `json:"explicit,string"`
 
 	Genres []Genre
 	Artist
@@ -61,7 +61,7 @@ type TrackVersion struct {
 	Id         int    `json:"trackId,string"`
 	Title      string `json:"trackVersionTitle"`
 	Images     Images
-	Streamable bool          `json:",string"`
+	Streamable bool          `json:"streamable,string"`
 	duration   int           `json:"duration,string"`
 	Duration   time.Duration `json:"-"`
 
@@ -75,14 +75,14 @@ type Album struct {
 	Id         int    `json:"albumId,string"`
 	Title      string `json:"albumTitle"`
 	Images     Images
-	Streamable bool `json:",string"`
+	Streamable bool `json:"streamable,string"`
 
 	Artist
 	Genres []Genre
 	Tracks []Track
 
 	Composer   string
-	ComposerID int `json:",string"`
+	ComposerID int `json:"composerId,string"`
 
 	IsAlikeTitleMatch  bool `json:"isAlikeTitleMatch,string"`
 	IsAlikeArtistMatch bool `json:"isAlikeTitleMatch,string"`
@@ -92,8 +92,8 @@ type RadioStation struct {
 	Id         int    `json:"stationId,string"`
 	Name       string `json:"stationName"`
 	Images     Images
-	Promoted   bool `json:",string"`
-	Streamable bool `json:",string"`
+	Promoted   bool `json:"promoted,string"`
+	Streamable bool `json:"streamable,string"`
 
 	IsAlikeTitleMatch  bool `json:"isAlikeTitleMatch,string"`
 	IsAlikeArtistMatch bool `json:"isAlikeTitleMatch,string"`
@@ -103,7 +103,7 @@ type Genre struct {
 	Id         int    `json:"genreId,string"`
 	Name       string `json:"genreName"`
 	Images     Images
-	Streamable bool `json:",string"`
+	Streamable bool `json:"streamable,string"`
 
 	IsAlikeTitleMatch  bool `json:"isAlikeTitleMatch,string"`
 	IsAlikeArtistMatch bool `json:"isAlikeTitleMatch,string"`
