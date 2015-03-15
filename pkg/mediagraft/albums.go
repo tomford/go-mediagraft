@@ -17,7 +17,7 @@ func (c *Client) AlbumsInfo(albumId ...int32) ([]Album, error) {
 	args.Set("ids", strings.Join(strids, ","))
 	args.Set("detail", "full")
 
-	r, err := c.Call("GET", "artistsInfo", args, nil)
+	r, err := c.Call("GET", "albumsInfo", args, nil)
 	if err != nil {
 		return nil, err
 	}
