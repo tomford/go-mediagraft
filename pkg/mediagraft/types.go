@@ -79,6 +79,7 @@ type Album struct {
 
 	Artist
 	Genres []Genre
+	Tracks []Track
 
 	Composer   string
 	ComposerID int `json:",string"`
