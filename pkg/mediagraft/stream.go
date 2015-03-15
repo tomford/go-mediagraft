@@ -21,6 +21,7 @@ func (c *Client) StreamInfo(trackId int, playSource string, playlistId int, musi
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var s Stream
 	//io.Copy(os.Stdout, r.Body)

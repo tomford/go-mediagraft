@@ -21,6 +21,7 @@ func (c *Client) TracksInfo(trackId ...int32) ([]Track, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var t []Track
 	//io.Copy(os.Stdout, r.Body)
@@ -48,6 +49,7 @@ func (c *Client) TrackVersionsInfo(trackId ...int32) ([]Track, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var t []Track
 	//io.Copy(os.Stdout, r.Body)

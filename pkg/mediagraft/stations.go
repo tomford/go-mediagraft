@@ -51,6 +51,7 @@ func (c *Client) GetStation(ident StationIdent) (*Station, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var s Station
 	dec := json.NewDecoder(r.Body)

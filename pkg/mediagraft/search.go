@@ -214,6 +214,7 @@ func (c *Client) SimpleSearch(q string, types []string, opts ...searchOpt) (*Sea
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var sr SearchResult
 	dec := json.NewDecoder(r)
@@ -230,6 +231,7 @@ func (c *Client) SimpleSearchWithInfo(q string, types []string, opts ...searchOp
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var sr SearchResultsWithInfo
 
@@ -268,6 +270,7 @@ func (c *Client) FindMatch(title string, artistname string, types []string) (*Se
 	if err != nil {
 		return nil, err
 	}
+	defer r.Body.Close()
 
 	var sr SearchResult
 	dec := json.NewDecoder(r.Body)
