@@ -26,9 +26,9 @@ type Artist struct {
 	IsVarious        bool `json:"isVarious,string"`
 	CommentaryArtist bool `json:"commentaryArtist,string"`
 
-	Genres      []Genre
-	Top10Albums []Album
-	Top10Tracks []Track
+	Genres []Genre
+	Albums []Album
+	Tracks []Track
 }
 
 type Track struct {
