@@ -120,36 +120,36 @@ type traceConn struct {
 
 func (c traceConn) Read(b []byte) (n int, err error) {
 	//rid := appdash.NewSpanID(c.id)
-	return c.Read(b)
+	return c.base.Read(b)
 }
 
 func (c traceConn) Write(b []byte) (n int, err error) {
 	//wid := appdash.NewSpanID(c.id)
-	return c.Write(b)
+	return c.base.Write(b)
 }
 
 func (c traceConn) Close() error {
-	return c.Close()
+	return c.base.Close()
 }
 
 func (c traceConn) LocalAddr() net.Addr {
-	return c.LocalAddr()
+	return c.base.LocalAddr()
 }
 
 func (c traceConn) RemoteAddr() net.Addr {
-	return c.RemoteAddr()
+	return c.base.RemoteAddr()
 }
 
 func (c traceConn) SetDeadline(t time.Time) error {
-	return c.SetDeadline(t)
+	return c.base.SetDeadline(t)
 }
 
 func (c traceConn) SetReadDeadline(t time.Time) error {
-	return c.SetReadDeadline(t)
+	return c.base.SetReadDeadline(t)
 }
 
 func (c traceConn) SetWriteDeadline(t time.Time) error {
-	return c.SetWriteDeadline(t)
+	return c.base.SetWriteDeadline(t)
 }
 
 // Thread safe map for tracking connections and spans
