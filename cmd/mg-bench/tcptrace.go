@@ -51,7 +51,7 @@ func (ConnEvent) Schema() string { return "ConnOpen" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnEvent) Important() []string {
-	return []string{"Open"}
+	return []string{"Opened", "Connected"}
 }
 
 // Start implements the appdash TimespanEvent interface.
@@ -66,7 +66,7 @@ func NewConnReadEvent() *ConnReadEvent {
 
 // ConnEvent records an connection event.
 type ConnReadEvent struct {
-	Count     int
+	ReadCount int
 	Error     string
 	ReadStart time.Time
 	ReadEnd   time.Time
@@ -77,7 +77,7 @@ func (ConnReadEvent) Schema() string { return "ConnRead" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnReadEvent) Important() []string {
-	return []string{"Count"}
+	return []string{"ReadStart", "ReadEnd", "ReadCount"}
 }
 
 // Start implements the appdash TimespanEvent interface.
@@ -92,7 +92,7 @@ func NewConnWriteEvent() *ConnWriteEvent {
 
 // ConnEvent records an connection event.
 type ConnWriteEvent struct {
-	Count      int
+	WriteCount int
 	Error      string
 	WriteStart time.Time
 	WriteEnd   time.Time
@@ -103,7 +103,7 @@ func (ConnWriteEvent) Schema() string { return "ConnWrite" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnWriteEvent) Important() []string {
-	return []string{"Count"}
+	return []string{"WriteStart", "WriteEnd", "WriteCount"}
 }
 
 // Start implements the appdash TimespanEvent interface.
@@ -123,7 +123,7 @@ func (c traceConn) Read(b []byte) (n int, err error) {
 	ev.ReadStart = time.Now()
 	n, err = c.base.Read(b)
 	ev.ReadEnd = time.Now()
-	ev.Count = n
+	ev.ReadCount = n
 	if err != nil {
 		ev.Error = err.Error()
 	}
@@ -138,7 +138,7 @@ func (c traceConn) Write(b []byte) (n int, err error) {
 	ev.WriteStart = time.Now()
 	n, err = c.base.Write(b)
 	ev.WriteEnd = time.Now()
-	ev.Count = n
+	ev.WriteCount = n
 	if err != nil {
 		ev.Error = err.Error()
 	}
@@ -201,6 +201,7 @@ func MakeTraceDialer(r *appdash.Recorder, defaultDial func(network string, addre
 		cr, ok := spanMap.Get(conn)
 		if !ok {
 			cr = r.Child()
+			cr.Name("net.Conn")
 			spanMap.Set(conn, cr)
 
 			ce := NewConnEvent(conn)

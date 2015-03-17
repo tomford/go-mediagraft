@@ -98,26 +98,14 @@ func main() {
 
 		r, _ := c.SimpleSearch("jimi hendrix purple haze", []string{"tracks"})
 
-		t := r.Tracks[0]
-		log.Println(t.Id)
-		log.Println(t.Images)
-
 		r, _ = c.SimpleSearch("jimi hendrix purple haze", []string{"tracks"})
 
-		t = r.Tracks[0]
-		log.Println(t.Id)
-		log.Println(t.Images)
-
+		t := r.Tracks[0]
 		s, err := c.StreamInfo(t.Id, "RADIO", 0, []string{"MP3"})
 		if err != nil {
 			log.Println(err)
 			return
 		}
-
-		log.Println(s)
-		log.Println(s.Unique)
-		log.Println(s.Location)
-
 		d := (time.Second * 15)
 		time.Sleep(d)
 
