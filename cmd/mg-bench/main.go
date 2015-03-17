@@ -62,8 +62,26 @@ func main() {
 
 		span := appdash.NewRootSpanID()
 
+		defaultDial := (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial
+
+		traceDial := func(network string, address string) (net.Conn, error) {
+			// Implement a custom net.Conn here that wraps the Conn returned by
+			// defaultDial and generates read/write spans
+			return defaultDial(network, address)
+		}
+
+		// A customized version of http.DefaultTransport
+		netTraceTransport := &http.Transport{
+			Proxy:               http.ProxyFromEnvironment,
+			Dial:                traceDial,
+			TLSHandshakeTimeout: 10 * time.Second,
+		}
+
 		httpClient := &http.Client{
-			Transport: &httptrace.Transport{Recorder: appdash.NewRecorder(span, localCollector), SetName: true},
+			Transport: &httptrace.Transport{Recorder: appdash.NewRecorder(span, localCollector), SetName: true, Transport: netTraceTransport},
 		}
 
 		testdomain := "api.stagingf.we7.com"
