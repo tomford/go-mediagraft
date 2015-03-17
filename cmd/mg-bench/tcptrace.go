@@ -173,13 +173,6 @@ func (m *connSpanMap) Set(c net.Conn, r *appdash.Recorder) {
 }
 
 func MakeTraceDialer(r *appdash.Recorder, defaultDial func(network string, address string) (net.Conn, error)) func(network string, address string) (net.Conn, error) {
-	/*
-		defaultDial := (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-		}).Dial
-	*/
-
 	return func(network string, address string) (net.Conn, error) {
 		begin := time.Now()
 		conn, err := defaultDial(network, address)

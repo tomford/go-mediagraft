@@ -60,29 +60,13 @@ func main() {
 
 	doReq := func() {
 
-		span := appdash.NewRootSpanID()
+		rec := appdash.NewRecorder(appdash.NewRootSpanID(), localCollector)
 
-		dialerSpan := appdash.NewSpanID(span)
 		defaultDial := (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
 		}).Dial
-
-		traceDial := func(network string, address string) (net.Conn, error) {
-			conn, err := defaultDial(network, address)
-			id, ok := spanMap.Get(conn)
-			if !ok {
-				id = appdash.NewSpanID(dialerSpan)
-				spanMap.Set(conn, id)
-			}
-
-			// TODO(tcm) This span should really be rooted off of the connection
-			tconn := traceConn{
-				base: conn,
-				id:   id,
-			}
-			return tconn, err
-		}
+		traceDial := MakeTraceDialer(rec, defaultDial)
 
 		// A customized version of http.DefaultTransport
 		netTraceTransport := &http.Transport{
@@ -92,7 +76,7 @@ func main() {
 		}
 
 		httpClient := &http.Client{
-			Transport: &httptrace.Transport{Recorder: appdash.NewRecorder(span, localCollector), SetName: true, Transport: netTraceTransport},
+			Transport: &httptrace.Transport{Recorder: rec, SetName: true, Transport: netTraceTransport},
 		}
 
 		testdomain := "api.stagingf.we7.com"
