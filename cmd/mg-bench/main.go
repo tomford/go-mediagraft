@@ -68,9 +68,14 @@ func main() {
 		}).Dial
 
 		traceDial := func(network string, address string) (net.Conn, error) {
-			// Implement a custom net.Conn here that wraps the Conn returned by
-			// defaultDial and generates read/write spans
-			return defaultDial(network, address)
+			conn, err := defaultDial(network, address)
+			// TODO(tcm) This span should really be rooted off of the connection
+			id := appdash.NewSpanID(span)
+			tconn := traceConn{
+				base: conn,
+				id:   id,
+			}
+			return tconn, err
 		}
 
 		// A customized version of http.DefaultTransport
@@ -136,4 +141,41 @@ func main() {
 	time.Sleep(15 * time.Minute)
 
 	return
+}
+
+type traceConn struct {
+	base net.Conn
+	id   appdash.SpanID
+}
+
+func (c traceConn) Read(b []byte) (n int, err error) {
+	return c.Read(b)
+}
+
+func (c traceConn) Write(b []byte) (n int, err error) {
+	return c.Write(b)
+}
+
+func (c traceConn) Close() error {
+	return c.Close()
+}
+
+func (c traceConn) LocalAddr() net.Addr {
+	return c.LocalAddr()
+}
+
+func (c traceConn) RemoteAddr() net.Addr {
+	return c.RemoteAddr()
+}
+
+func (c traceConn) SetDeadline(t time.Time) error {
+	return c.SetDeadline(t)
+}
+
+func (c traceConn) SetReadDeadline(t time.Time) error {
+	return c.SetReadDeadline(t)
+}
+
+func (c traceConn) SetWriteDeadline(t time.Time) error {
+	return c.SetWriteDeadline(t)
 }
