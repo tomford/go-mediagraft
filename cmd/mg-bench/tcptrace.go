@@ -23,27 +23,27 @@ func init() {
 }
 
 func NewConnEvent(c net.Conn) *ConnEvent {
-	return &ConnEvent{Conn: connInfo(c)}
+	return &ConnEvent{Connection: connInfo(c)}
 }
 
 // RequestInfo describes an HTTP request.
 type ConnInfo struct {
-	RemoteAddr net.Addr
-	LocalAddr  net.Addr
+	RemoteAddr string
+	LocalAddr  string
 }
 
 func connInfo(c net.Conn) ConnInfo {
 	return ConnInfo{
-		RemoteAddr: c.RemoteAddr(),
-		LocalAddr:  c.LocalAddr(),
+		RemoteAddr: c.RemoteAddr().String(),
+		LocalAddr:  c.LocalAddr().String(),
 	}
 }
 
 // ConnEvent records an connection event.
 type ConnEvent struct {
-	Conn          ConnInfo
-	ConnOpen      time.Time
-	ConnConnected time.Time
+	Connection ConnInfo
+	Opened     time.Time
+	Connected  time.Time
 }
 
 // Schema returns the constant "HTTPClient".
@@ -51,14 +51,14 @@ func (ConnEvent) Schema() string { return "ConnOpen" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnEvent) Important() []string {
-	return []string{}
+	return []string{"Open"}
 }
 
 // Start implements the appdash TimespanEvent interface.
-func (e ConnEvent) Start() time.Time { return e.ConnOpen }
+func (e ConnEvent) Start() time.Time { return e.Opened }
 
 // End implements the appdash TimespanEvent interface.
-func (e ConnEvent) End() time.Time { return e.ConnConnected }
+func (e ConnEvent) End() time.Time { return e.Connected }
 
 func NewConnReadEvent() *ConnReadEvent {
 	return &ConnReadEvent{}
@@ -66,7 +66,7 @@ func NewConnReadEvent() *ConnReadEvent {
 
 // ConnEvent records an connection event.
 type ConnReadEvent struct {
-	Count     uint64
+	Count     int
 	Error     string
 	ReadStart time.Time
 	ReadEnd   time.Time
@@ -77,7 +77,7 @@ func (ConnReadEvent) Schema() string { return "ConnRead" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnReadEvent) Important() []string {
-	return []string{}
+	return []string{"Count"}
 }
 
 // Start implements the appdash TimespanEvent interface.
@@ -92,7 +92,7 @@ func NewConnWriteEvent() *ConnWriteEvent {
 
 // ConnEvent records an connection event.
 type ConnWriteEvent struct {
-	Count      uint64
+	Count      int
 	Error      string
 	WriteStart time.Time
 	WriteEnd   time.Time
@@ -103,7 +103,7 @@ func (ConnWriteEvent) Schema() string { return "ConnWrite" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnWriteEvent) Important() []string {
-	return []string{}
+	return []string{"Count"}
 }
 
 // Start implements the appdash TimespanEvent interface.
@@ -119,13 +119,33 @@ type traceConn struct {
 }
 
 func (c traceConn) Read(b []byte) (n int, err error) {
-	//rid := appdash.NewSpanID(c.id)
-	return c.base.Read(b)
+	ev := NewConnReadEvent()
+	ev.ReadStart = time.Now()
+	n, err = c.base.Read(b)
+	ev.ReadEnd = time.Now()
+	ev.Count = n
+	if err != nil {
+		ev.Error = err.Error()
+	}
+
+	c.rec.Event(ev)
+
+	return n, err
 }
 
 func (c traceConn) Write(b []byte) (n int, err error) {
-	//wid := appdash.NewSpanID(c.id)
-	return c.base.Write(b)
+	ev := NewConnWriteEvent()
+	ev.WriteStart = time.Now()
+	n, err = c.base.Write(b)
+	ev.WriteEnd = time.Now()
+	ev.Count = n
+	if err != nil {
+		ev.Error = err.Error()
+	}
+
+	c.rec.Event(ev)
+
+	return n, err
 }
 
 func (c traceConn) Close() error {
@@ -184,9 +204,9 @@ func MakeTraceDialer(r *appdash.Recorder, defaultDial func(network string, addre
 			spanMap.Set(conn, cr)
 
 			ce := NewConnEvent(conn)
-			ce.ConnOpen = begin
-			ce.ConnConnected = conned
-			r.Event(ce)
+			ce.Opened = begin
+			ce.Connected = conned
+			cr.Event(ce)
 		}
 
 		// TODO(tcm) This span should really be rooted off of the connection
