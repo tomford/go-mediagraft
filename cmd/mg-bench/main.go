@@ -9,8 +9,6 @@ import (
 	"os"
 	"time"
 
-	"sync"
-
 	"sourcegraph.com/sourcegraph/appdash"
 	"sourcegraph.com/sourcegraph/appdash/httptrace"
 	"sourcegraph.com/sourcegraph/appdash/traceapp"
@@ -22,11 +20,6 @@ import (
 // Execute execudes the commands with the given arguments and returns an error,
 // if any.
 func main() {
-	spanMap := &connSpanMap{
-		lock: &sync.RWMutex{},
-		smap: make(map[net.Conn]appdash.SpanID),
-	}
-
 	// We create a new in-memory store. All information about traces will
 	// eventually be stored here.
 	store := appdash.NewMemoryStore()
@@ -153,64 +146,5 @@ func main() {
 
 	time.Sleep(15 * time.Minute)
 
-	return
-}
-
-type traceConn struct {
-	base net.Conn
-	id   appdash.SpanID
-}
-
-func (c traceConn) Read(b []byte) (n int, err error) {
-	//rid := appdash.NewSpanID(c.id)
-	return c.Read(b)
-}
-
-func (c traceConn) Write(b []byte) (n int, err error) {
-	//wid := appdash.NewSpanID(c.id)
-	return c.Write(b)
-}
-
-func (c traceConn) Close() error {
-	return c.Close()
-}
-
-func (c traceConn) LocalAddr() net.Addr {
-	return c.LocalAddr()
-}
-
-func (c traceConn) RemoteAddr() net.Addr {
-	return c.RemoteAddr()
-}
-
-func (c traceConn) SetDeadline(t time.Time) error {
-	return c.SetDeadline(t)
-}
-
-func (c traceConn) SetReadDeadline(t time.Time) error {
-	return c.SetReadDeadline(t)
-}
-
-func (c traceConn) SetWriteDeadline(t time.Time) error {
-	return c.SetWriteDeadline(t)
-}
-
-// Thread safe map for tracking connections and spans
-type connSpanMap struct {
-	lock *sync.RWMutex
-	smap map[net.Conn]appdash.SpanID
-}
-
-func (m *connSpanMap) Get(c net.Conn) (appdash.SpanID, bool) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
-	s, ok := m.smap[c]
-	return s, ok
-}
-
-func (m *connSpanMap) Set(c net.Conn, s appdash.SpanID) {
-	m.lock.Lock()
-	defer m.lock.Unlock()
-	m.smap[c] = s
 	return
 }

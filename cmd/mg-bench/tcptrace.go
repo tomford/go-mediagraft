@@ -4,10 +4,19 @@ import (
 	"net"
 	"time"
 
+	"sync"
+
 	"sourcegraph.com/sourcegraph/appdash"
 )
 
+var spanMap *connSpanMap
+
 func init() {
+	spanMap = &connSpanMap{
+		lock: &sync.RWMutex{},
+		smap: make(map[net.Conn]*appdash.Recorder),
+	}
+
 	appdash.RegisterEvent(ConnEvent{})
 	appdash.RegisterEvent(ConnReadEvent{})
 	appdash.RegisterEvent(ConnWriteEvent{})
@@ -35,11 +44,10 @@ type ConnEvent struct {
 	Conn          ConnInfo
 	ConnOpen      time.Time
 	ConnConnected time.Time
-	ConnClosed    time.Time
 }
 
 // Schema returns the constant "HTTPClient".
-func (ConnEvent) Schema() string { return "ConnClient" }
+func (ConnEvent) Schema() string { return "ConnOpen" }
 
 // Important implements the appdash ImportantEvent.
 func (ConnEvent) Important() []string {
@@ -50,7 +58,7 @@ func (ConnEvent) Important() []string {
 func (e ConnEvent) Start() time.Time { return e.ConnOpen }
 
 // End implements the appdash TimespanEvent interface.
-func (e ConnEvent) End() time.Time { return e.ConnClosed }
+func (e ConnEvent) End() time.Time { return e.ConnConnected }
 
 func NewConnReadEvent() *ConnReadEvent {
 	return &ConnReadEvent{}
@@ -103,3 +111,96 @@ func (e ConnWriteEvent) Start() time.Time { return e.WriteStart }
 
 // End implements the appdash TimespanEvent interface.
 func (e ConnWriteEvent) End() time.Time { return e.WriteEnd }
+
+// a net.Conn implementation that tracks connections and send/recv
+type traceConn struct {
+	base net.Conn
+	rec  *appdash.Recorder
+}
+
+func (c traceConn) Read(b []byte) (n int, err error) {
+	//rid := appdash.NewSpanID(c.id)
+	return c.Read(b)
+}
+
+func (c traceConn) Write(b []byte) (n int, err error) {
+	//wid := appdash.NewSpanID(c.id)
+	return c.Write(b)
+}
+
+func (c traceConn) Close() error {
+	return c.Close()
+}
+
+func (c traceConn) LocalAddr() net.Addr {
+	return c.LocalAddr()
+}
+
+func (c traceConn) RemoteAddr() net.Addr {
+	return c.RemoteAddr()
+}
+
+func (c traceConn) SetDeadline(t time.Time) error {
+	return c.SetDeadline(t)
+}
+
+func (c traceConn) SetReadDeadline(t time.Time) error {
+	return c.SetReadDeadline(t)
+}
+
+func (c traceConn) SetWriteDeadline(t time.Time) error {
+	return c.SetWriteDeadline(t)
+}
+
+// Thread safe map for tracking connections and spans
+type connSpanMap struct {
+	lock *sync.RWMutex
+	smap map[net.Conn]*appdash.Recorder
+}
+
+func (m *connSpanMap) Get(c net.Conn) (*appdash.Recorder, bool) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	r, ok := m.smap[c]
+	return r, ok
+}
+
+func (m *connSpanMap) Set(c net.Conn, r *appdash.Recorder) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.smap[c] = r
+	return
+}
+
+func MakeTraceDialer(r *appdash.Recorder, defaultDial func(network string, address string) (net.Conn, error)) func(network string, address string) (net.Conn, error) {
+	/*
+		defaultDial := (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+		}).Dial
+	*/
+
+	return func(network string, address string) (net.Conn, error) {
+		begin := time.Now()
+		conn, err := defaultDial(network, address)
+		conned := time.Now()
+
+		cr, ok := spanMap.Get(conn)
+		if !ok {
+			cr = r.Child()
+			spanMap.Set(conn, cr)
+
+			ce := NewConnEvent(conn)
+			ce.ConnOpen = begin
+			ce.ConnConnected = conned
+			r.Event(ce)
+		}
+
+		// TODO(tcm) This span should really be rooted off of the connection
+		tconn := traceConn{
+			base: conn,
+			rec:  cr,
+		}
+		return tconn, err
+	}
+}
