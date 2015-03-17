@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"sync"
+
 	"sourcegraph.com/sourcegraph/appdash"
 	"sourcegraph.com/sourcegraph/appdash/httptrace"
 	"sourcegraph.com/sourcegraph/appdash/traceapp"
@@ -20,6 +22,11 @@ import (
 // Execute execudes the commands with the given arguments and returns an error,
 // if any.
 func main() {
+	spanMap := &connSpanMap{
+		lock: &sync.RWMutex{},
+		smap: make(map[net.Conn]appdash.SpanID),
+	}
+
 	// We create a new in-memory store. All information about traces will
 	// eventually be stored here.
 	store := appdash.NewMemoryStore()
@@ -62,6 +69,7 @@ func main() {
 
 		span := appdash.NewRootSpanID()
 
+		dialerSpan := appdash.NewSpanID(span)
 		defaultDial := (&net.Dialer{
 			Timeout:   30 * time.Second,
 			KeepAlive: 30 * time.Second,
@@ -69,8 +77,13 @@ func main() {
 
 		traceDial := func(network string, address string) (net.Conn, error) {
 			conn, err := defaultDial(network, address)
+			id, ok := spanMap.Get(conn)
+			if !ok {
+				id = appdash.NewSpanID(dialerSpan)
+				spanMap.Set(conn, id)
+			}
+
 			// TODO(tcm) This span should really be rooted off of the connection
-			id := appdash.NewSpanID(span)
 			tconn := traceConn{
 				base: conn,
 				id:   id,
@@ -149,10 +162,12 @@ type traceConn struct {
 }
 
 func (c traceConn) Read(b []byte) (n int, err error) {
+	//rid := appdash.NewSpanID(c.id)
 	return c.Read(b)
 }
 
 func (c traceConn) Write(b []byte) (n int, err error) {
+	//wid := appdash.NewSpanID(c.id)
 	return c.Write(b)
 }
 
@@ -178,4 +193,24 @@ func (c traceConn) SetReadDeadline(t time.Time) error {
 
 func (c traceConn) SetWriteDeadline(t time.Time) error {
 	return c.SetWriteDeadline(t)
+}
+
+// Thread safe map for tracking connections and spans
+type connSpanMap struct {
+	lock *sync.RWMutex
+	smap map[net.Conn]appdash.SpanID
+}
+
+func (m *connSpanMap) Get(c net.Conn) (appdash.SpanID, bool) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+	s, ok := m.smap[c]
+	return s, ok
+}
+
+func (m *connSpanMap) Set(c net.Conn, s appdash.SpanID) {
+	m.lock.Lock()
+	defer m.lock.Unlock()
+	m.smap[c] = s
+	return
 }
